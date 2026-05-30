@@ -1,0 +1,251 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// This table has subclasses and requires additional setup for migrations. Visit https://pris.ly/d/table-inheritance for more info.
+model AnprImagesLog {
+  imei        String
+  time        DateTime @db.Timestamptz(6)
+  data        Json
+  received_at DateTime @default(now()) @db.Timestamptz(6)
+
+  @@id([imei, time])
+  @@index([time(sort: Desc)])
+}
+
+model Device {
+  id                    Int                     @id @default(autoincrement())
+  imei                  String                  @unique
+  video_url             String?
+  name                  String?
+  location              Json?
+  site_id               Int?
+  organization_id       Int?
+  max_count             Int?
+  created_at            DateTime                @default(now())
+  updated_at            DateTime                @default(now())
+  is_active             Boolean                 @default(true)
+  is_deleted            Boolean                 @default(false)
+  Organization          Organization?           @relation(fields: [organization_id], references: [id])
+  Site                  Site?                   @relation(fields: [site_id], references: [id])
+  DeviceStorageDailyLog DeviceStorageDailyLog[]
+  LatestLog             LatestLog?
+  UserDevice            UserDevice[]
+  UserWishlist          UserWishlist[]
+}
+
+model DeviceSoftwareVersions {
+  id          Int       @id @default(autoincrement())
+  version     String    @unique
+  description String?
+  is_active   Boolean   @default(false)
+  created_at  DateTime  @default(now())
+  updated_at  DateTime?
+}
+
+/// This table has subclasses and requires additional setup for migrations. Visit https://pris.ly/d/table-inheritance for more info.
+model DeviceStatusResponseLog {
+  imei        String
+  time        DateTime @db.Timestamptz(6)
+  data        Json
+  received_at DateTime @default(now()) @db.Timestamptz(6)
+
+  @@id([imei, time])
+  @@index([time(sort: Desc)])
+}
+
+model DeviceStorageDailyLog {
+  id          Int      @id @default(autoincrement())
+  device_id   Int
+  imei        String
+  log_date    DateTime @db.Date
+  folders     Json
+  total_bytes BigInt   @default(0)
+  created_at  DateTime @default(now())
+  Device      Device   @relation(fields: [device_id], references: [id], onDelete: Cascade)
+
+  @@unique([device_id, log_date])
+  @@index([log_date(sort: Desc)])
+}
+
+/// This table has subclasses and requires additional setup for migrations. Visit https://pris.ly/d/table-inheritance for more info.
+model GarbageLog {
+  imei        String
+  time        DateTime @db.Timestamptz(6)
+  data        Json
+  received_at DateTime @default(now()) @db.Timestamptz(6)
+
+  @@id([imei, time])
+  @@index([time(sort: Desc)])
+}
+
+model InstalledDevice {
+  id            Int      @id @default(autoincrement())
+  imei          String   @unique
+  video_url     String?
+  is_installed  Boolean  @default(true)
+  is_registered Boolean  @default(false)
+  created_at    DateTime @default(now())
+  updated_at    DateTime @default(now())
+}
+
+model LatestLog {
+  id                         Int       @id @default(autoincrement())
+  device_id                  Int       @unique
+  imei                       String    @unique
+  garbage_log_time           DateTime? @db.Timestamptz(6)
+  garbage_log                Json?
+  motion_log_time            DateTime? @db.Timestamptz(6)
+  motion_log                 Json?
+  update_at                  DateTime  @default(now())
+  created_at                 DateTime  @default(now())
+  anpr_log                   Json?
+  anpr_log_time              DateTime? @db.Timestamptz(6)
+  device_status_log          Json?
+  device_status_log_time     DateTime? @db.Timestamptz(6)
+  vehicle_detection_log      Json?
+  vehicle_detection_log_time DateTime? @db.Timestamptz(6)
+  Device                     Device    @relation(fields: [device_id], references: [id], onDelete: Cascade)
+}
+
+/// This table has subclasses and requires additional setup for migrations. Visit https://pris.ly/d/table-inheritance for more info.
+model MotionLog {
+  imei        String
+  time        DateTime @db.Timestamptz(6)
+  data        Json
+  received_at DateTime @default(now()) @db.Timestamptz(6)
+
+  @@id([imei, time])
+  @@index([time(sort: Desc)])
+}
+
+model Organization {
+  id                     Int                      @id @default(autoincrement())
+  name                   String                   @unique
+  created_at             DateTime                 @default(now())
+  updated_at             DateTime                 @default(now())
+  logo_url               String?
+  Device                 Device[]
+  OrganizationInnerRoles OrganizationInnerRoles[]
+  Site                   Site[]
+  UserOrganization       UserOrganization[]
+}
+
+model OrganizationInnerRoles {
+  id               Int                @id @default(autoincrement())
+  name             String
+  role_order_no    Int
+  designation      String?
+  description      String?
+  organization_id  Int
+  Organization     Organization       @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  UserOrganization UserOrganization[]
+
+  @@unique([name, organization_id])
+}
+
+model Site {
+  id                   Int            @id @default(autoincrement())
+  name                 String
+  location             Json
+  organization_id      Int?
+  created_at           DateTime       @default(now())
+  updated_at           DateTime       @default(now())
+  site_initiate_images Json?
+  Device               Device[]
+  Organization         Organization?  @relation(fields: [organization_id], references: [id], onDelete: Restrict)
+  UserWishlist         UserWishlist[]
+}
+
+model User {
+  id               Int                @id @default(autoincrement())
+  fullname         String
+  username         String             @unique
+  password         String
+  mobile           String             @unique
+  role             GlobalRole         @default(USER)
+  created_at       DateTime           @default(now())
+  updated_at       DateTime           @default(now())
+  UserDevice       UserDevice[]
+  UserFcmToken     UserFcmToken[]
+  UserOrganization UserOrganization[]
+  UserWishlist     UserWishlist[]
+}
+
+model UserDevice {
+  id        Int    @id @default(autoincrement())
+  user_id   Int
+  device_id Int
+  Device    Device @relation(fields: [device_id], references: [id], onDelete: Cascade)
+  User      User   @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, device_id])
+}
+
+model UserFcmToken {
+  id        Int    @id @default(autoincrement())
+  user_id   Int
+  fcm_token String
+  mobile    String
+  User      User   @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+model UserOrganization {
+  id                     Int                     @id @default(autoincrement())
+  user_id                Int
+  organization_id        Int
+  role                   OrgRole                 @default(USER)
+  alert_settings_feature Boolean                 @default(false)
+  role_id                Int?
+  Organization           Organization            @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  OrganizationInnerRoles OrganizationInnerRoles? @relation(fields: [role_id], references: [id])
+  User                   User                    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, organization_id])
+}
+
+model UserWishlist {
+  id         Int          @id @default(autoincrement())
+  user_id    Int
+  type       WishlistType
+  device_id  Int?
+  site_id    Int?
+  created_at DateTime     @default(now())
+  Device     Device?      @relation(fields: [device_id], references: [id], onDelete: Cascade)
+  Site       Site?        @relation(fields: [site_id], references: [id], onDelete: Cascade)
+  User       User         @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, device_id])
+  @@unique([user_id, site_id])
+}
+
+model VehicleDetectionLog {
+  imei        String
+  time        DateTime @db.Timestamptz(6)
+  data        Json
+  received_at DateTime @default(now()) @db.Timestamptz(6)
+
+  @@id([imei, time])
+  @@index([time(sort: Desc)])
+}
+
+enum GlobalRole {
+  SUPERADMIN
+  USER
+  APP_USER
+}
+
+enum OrgRole {
+  ADMIN
+  USER
+}
+
+enum WishlistType {
+  DEVICE
+  SITE
+}
