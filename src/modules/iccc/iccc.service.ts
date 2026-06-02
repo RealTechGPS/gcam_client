@@ -30,19 +30,36 @@ const BASE_PATH = '/home/ftpuser/ftp/files';
 
 // ── Date range validator — all comparisons in IST ─────────────────
 const validateDateRange = (from: string, to: string) => {
+  if (!from || !to) {
+    throw new BadRequestException(
+      'Both from and to dates are required'
+    );
+  }
+
   const fromD = dayjs(from).tz(IST);
-  const toD   = dayjs(to).tz(IST);
+  const toD = dayjs(to).tz(IST);
 
   if (!fromD.isValid() || !toD.isValid()) {
-    throw new BadRequestException('Invalid date format');
+    throw new BadRequestException(
+      'Invalid date format. Use ISO format with timezone.'
+    );
   }
-  if (toD.diff(fromD, 'day') > MAX_DAYS) {
-    throw new BadRequestException(`Date range cannot exceed ${MAX_DAYS} days`);
+
+  if (toD.isBefore(fromD)) {
+    throw new BadRequestException(
+      '"to" date must be greater than or equal to "from" date'
+    );
+  }
+
+  if (toD.diff(fromD, 'day', true) > MAX_DAYS) {
+    throw new BadRequestException(
+      `Date range cannot exceed ${MAX_DAYS} days`
+    );
   }
 
   return {
     fromUTC: fromD.utc().toDate(),
-    toUTC:   toD.utc().toDate(),
+    toUTC: toD.utc().toDate(),
   };
 };
 
