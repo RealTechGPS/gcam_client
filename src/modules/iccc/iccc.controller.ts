@@ -23,10 +23,10 @@ export class IcccController {
         return this.icccService.getDevices();
     }
 
-    @Post('report/garbage_logs')
-    getGarbageLogs(@Body() body:LogsDto){
-        return this.icccService.getGarbageLogs(body.imei,body.from,body.to)
-    }
+    // @Post('report/garbage_logs')
+    // getGarbageLogs(@Body() body:LogsDto){
+    //     return this.icccService.getGarbageLogs(body.imei,body.from,body.to)
+    // }
 
     @Post('report/person_logs')
     getPersonLogs(@Body() body:LogsDto) {
@@ -34,30 +34,30 @@ export class IcccController {
     }
 
 
-    @Post('report/anpr_logs')
+    @Post('report/vehicle_logs')
     getAnprLogs(@Body() body:LogsDto){
-        return this.icccService.getAnprLogs(body.imei,body.from,body.to)
+        return this.icccService.getVehicleDetectionLogs(body.imei,body.from,body.to)
     }
 
 
 
-    @Post('audio/upload/:imei')
-    @UseInterceptors(FileInterceptor('file', { storage: memoryStorage() }))
-    uploadDeviceAudio(
-        @Param('imei')          imei: string,
-        @UploadedFile()         file: Express.Multer.File,
-    ) {
-        return this.icccService.uploadDeviceAudio(imei, file);
-    }
+    // @Post('audio/upload/:imei')
+    // @UseInterceptors(FileInterceptor('file', { storage: memoryStorage() }))
+    // uploadDeviceAudio(
+    //     @Param('imei')          imei: string,
+    //     @UploadedFile()         file: Express.Multer.File,
+    // ) {
+    //     return this.icccService.uploadDeviceAudio(imei, file);
+    // }
 
 
-    @Get('audio/default')
-    getDefaultAudios() {
-        return this.icccService.getDefaultAudios();
-    }
+    // @Get('audio/default')
+    // getDefaultAudios() {
+    //     return this.icccService.getDefaultAudios();
+    // }
 
-    @Get('audio/device/:imei')
-    getDeviceAudios(@Param('imei') imei: string) {
-        return this.icccService.getDeviceAudios(imei);
-    }
+    // @Get('audio/device/:imei')
+    // getDeviceAudios(@Param('imei') imei: string) {
+    //     return this.icccService.getDeviceAudios(imei);
+    // }
 }
