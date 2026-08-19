@@ -106,6 +106,7 @@ export class IcccService {
                     motion_log_time:            true,
                     vehicle_detection_log:      true,
                     vehicle_detection_log_time: true,
+                    update_at:true
                   },
                 },
               },
@@ -133,6 +134,7 @@ export class IcccService {
 
                   vehicle_detection_log:      shapeVideoLog(log.vehicle_detection_log, FTP_URL_LATEST),
                   vehicle_detection_log_time: log.vehicle_detection_log_time,
+                  updated_at:log.update_at
                 }
               : null,
           };
@@ -143,7 +145,7 @@ export class IcccService {
     return { status: 'success', data };
   }
 
-  // POST - /iccc/report/vehicle_detection_logs
+  // POST - /iccc/report/vehicle_logs
   async getVehicleDetectionLogs(imei: string, from: string, to: string) {
     const { fromUTC, toUTC }   = validateDateRange(from, to);
     const { imei: deviceImei } = await this.resolveDevice(imei);
