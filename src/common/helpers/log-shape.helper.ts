@@ -7,8 +7,8 @@ dayjs.extend(timezone);
 
 export const IST            = 'Asia/Kolkata';
 export const FTP_LOCAL      = '/home/ftpuser/ftp/files/';
-export const FTP_URL_LATEST = 'https://gcam-ftp.rtsiot.com/gcam/';
-export const FTP_URL_REPORT = 'https://rtgpshost.ifill.in/gcam/';
+export const FTP_URL_LATEST = 'https://sb-ftpgcam.rtsiot.com/gcam/';
+export const FTP_URL_REPORT = 'https://sb-ftpgcam.rtsiot.com/gcam/';
 
 // ──────────────────────────────────────────────────────────────────
 // 👇 ONLY THIS NUMBER NEEDS TO CHANGE when server storage extends
