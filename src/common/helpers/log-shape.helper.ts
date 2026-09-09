@@ -38,7 +38,19 @@ export const toPublicUrl = (
   baseUrl: string,
 ): string | null => {
   if (!path) return null;
-  return path.replace(FTP_LOCAL, baseUrl);
+
+  const localPaths = [
+    '/home/ftpuser/ftp/files/',
+    '/ftp/files/',
+  ];
+
+  for (const localPath of localPaths) {
+    if (path.startsWith(localPath)) {
+      return path.replace(localPath, baseUrl);
+    }
+  }
+
+  return path;
 };
 
 // ── Garbage ───────────────────────────────────────────────────────
