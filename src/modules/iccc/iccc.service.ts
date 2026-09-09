@@ -159,13 +159,9 @@ export class IcccService {
       orderBy: { time: 'desc' },
     });
 
-    // Raw data as-is (mirrors the /gcam/common/report/vehicle_detection_log/rawdata shape).
-    // Swap the line below for the shaped version if you want image_path/video_path
-    // rewritten to a public URL instead of the raw ftp filesystem path.
     const data = logs.map((log) => ({
       time: log.time,
-      data: log.data,
-      // data: shapeVideoLog(log.data, resolveBaseUrl(log.time)),
+      data: shapeVideoLog(log.data, resolveBaseUrl(log.time)),
     }));
 
     return { status: 'success', data };

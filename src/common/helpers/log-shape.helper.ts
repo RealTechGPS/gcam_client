@@ -101,28 +101,15 @@ export const shapeMotionLog = (log: any, baseUrl: string) => {
   };
 };
 
-// ── Video log (inside ANPR) ───────────────────────────────────────
+// ── Video log (inside ANPR / Vehicle Detection) ───────────────────
 export const shapeVideoLog = (log: any, baseUrl: string) => {
   if (!log) return null;
   return {
-    date:            log.date,
-    time:            log.time,
-    event:           log.event,
-    device_id:       log.device_id,
-    // video_dir:       toPublicUrl(log.video_dir, baseUrl),
-    image_file:      log.image_file,
-    image_path:      toPublicUrl(log.image_path, baseUrl),
-    video_file:      log.video_file,
-    video_path:      toPublicUrl(log.video_path, baseUrl),
-    camera_name:     log.camera_name,
-    duration_sec:    log.duration_sec,
-    // image_status:    log.image_status,
-    // video_status:    log.video_status,
-    // image_message:   log.image_message,
-    vehicle_count:   log.vehicle_count,
-    // video_message:   log.video_message,
-    // vehicle_labels:  log.vehicle_labels,
-    // best_confidence: log.best_confidence,
+    ...log,
+    ...(log.dir && { dir: toPublicUrl(log.dir, baseUrl) }),
+    ...(log.video_dir && { video_dir: toPublicUrl(log.video_dir, baseUrl) }),
+    ...(log.image_path && { image_path: toPublicUrl(log.image_path, baseUrl) }),
+    ...(log.video_path && { video_path: toPublicUrl(log.video_path, baseUrl) }),
   };
 };
 
