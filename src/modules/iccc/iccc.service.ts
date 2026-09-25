@@ -218,6 +218,70 @@ export class IcccService {
     return { status: 'success', data };
   }
 
+
+
+  // POST - /iccc/report/device_response_logs
+  async getDeviceResponseLogs(
+    imei: string,
+    from: string,
+    to: string,
+    event?: string,
+  ) {
+    const { fromUTC, toUTC }   = validateDateRange(from, to);
+    const { imei: deviceImei } = await this.resolveDevice(imei);
+
+    const whereClause: any = {
+      imei: deviceImei,
+      time: { gte: fromUTC, lte: toUTC },
+    };
+
+    if (event && event !== 'all') {
+      whereClause.event = event;
+    }
+
+    const logs = await this.prisma.deviceResponses.findMany({
+      where: whereClause,
+      select: {
+        time: true,
+        event: true,
+        data: true,
+        received_at: true,
+      },
+      orderBy: { time: 'desc' },
+    });
+
+// for now this event only avialable [warning_audio_played]
+//  {
+//   "status": "success",
+//   "data": [
+//     {
+//       "time": "2026-09-18T09:11:42.000Z",
+//       "event": "warning_audio_played",
+//       "data": {
+//         "device_id": "RTGCAM2",
+//         "event": "warning_audio_played",
+//         "target": "person",
+//         "file": "warning.wav",
+//         "time": "2026-09-18 14:41:42",
+//         "daily_count_date": "2026-09-18",
+//         "daily_play_count": 5,
+//         "daily_auto_play_count": 0,
+//         "daily_detection_play_count": 5
+//       },
+//       "received_at": "2026-09-18T09:11:43.000Z"
+//     }
+//   ]
+// }
+    const data = logs.map((log) => ({
+      time: log.time,
+      event: log.event,
+      data: log.data,
+      received_at: log.received_at,
+    }));
+
+    return { status: 'success', data };
+  }
+
   // //  POST - /iccc/report/anpr_logs
   // async getAnprLogs(imei: string, from: string, to: string) {
   //   const MAX_EDIT_DISTANCE       = 2;

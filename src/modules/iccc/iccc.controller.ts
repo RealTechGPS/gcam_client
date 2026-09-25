@@ -6,8 +6,9 @@ import { IcccAuthGuard } from './iccc-auth.guard';
 
 class LogsDto {
     imei!: string;
-    from!:string;
-    to!:string;
+    from!: string;
+    to!: string;
+    event?: string;
 }
 
 @Controller('iccc')
@@ -37,6 +38,18 @@ export class IcccController {
     @Post('report/vehicle_logs')
     getAnprLogs(@Body() body:LogsDto){
         return this.icccService.getVehicleDetectionLogs(body.imei,body.from,body.to)
+    }
+
+    // Device response event logs (filter by event if provided, e.g. "warning_audio_played")
+    @Post('report/device_response_logs')
+    getDeviceResponseLogs(@Body() body: LogsDto) {
+        return this.icccService.getDeviceResponseLogs(body.imei, body.from, body.to, body.event);
+    }
+
+    // Alias for backward compatibility
+    @Post('report/warning_logs')
+    getWarningLogs(@Body() body: LogsDto) {
+        return this.icccService.getDeviceResponseLogs(body.imei, body.from, body.to, body.event || 'warning_audio_played');
     }
 
 
