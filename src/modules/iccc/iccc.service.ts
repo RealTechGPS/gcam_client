@@ -145,6 +145,54 @@ export class IcccService {
     return { status: 'success', data };
   }
 
+  // GET - /iccc/lfp/devices (Organization 8 - LFP Devices with Site details)
+  async getLfpDevices() {
+    const LFP_ORG_ID = 8;
+    const gatewayBaseUrl = (process.env.GCAM_GATEWAY_URL || 'https://gcamlfpclient.rtsiot.com').replace(/\/$/, '');
+
+    const org = await this.prisma.organization.findUnique({
+      where: { id: LFP_ORG_ID },
+      select: {
+        Site: {
+          select: {
+            name: true,
+            location: true,
+            Device: {
+              where: {
+                is_active: true,
+                is_deleted: false,
+              },
+              select: {
+                imei: true,
+                name: true,
+                location: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const data = {
+      ...org,
+      Site: org?.Site?.map((site) => ({
+        ...site,
+        Device: site.Device.map((device) => {
+          const imei = device.imei;
+          return {
+            imei: device.imei,
+            name: device.name,
+            location: device.location,
+            live_url: `${gatewayBaseUrl}/${imei}/live`,
+            playback_url: `${gatewayBaseUrl}/${imei}/playback`,
+          };
+        }),
+      })),
+    };
+
+    return { status: 'success', data };
+  }
+
   // POST - /iccc/report/vehicle_logs
   async getVehicleDetectionLogs(imei: string, from: string, to: string) {
     const { fromUTC, toUTC }   = validateDateRange(from, to);
