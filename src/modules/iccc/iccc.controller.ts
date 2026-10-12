@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+﻿import { Body, Controller, Get, Param, Post, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { IcccService } from './iccc.service';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
@@ -18,10 +18,14 @@ export class IcccController {
         private readonly icccService: IcccService
     ) {}
 
-
     @Get("devices")
     getDevices(){
         return this.icccService.getDevices();
+    }
+
+    @Get("lfp/devices")
+    getLfpDevices(){
+        return this.icccService.getLfpDevices();
     }
 
     // @Post('report/garbage_logs')
@@ -33,7 +37,6 @@ export class IcccController {
     getPersonLogs(@Body() body:LogsDto) {
         return this.icccService.getMotionLogs(body.imei,body.from,body.to)
     }
-
 
     @Post('report/vehicle_logs')
     getAnprLogs(@Body() body:LogsDto){
@@ -51,26 +54,4 @@ export class IcccController {
     getWarningLogs(@Body() body: LogsDto) {
         return this.icccService.getDeviceResponseLogs(body.imei, body.from, body.to, body.event || 'warning_audio_played');
     }
-
-
-
-    // @Post('audio/upload/:imei')
-    // @UseInterceptors(FileInterceptor('file', { storage: memoryStorage() }))
-    // uploadDeviceAudio(
-    //     @Param('imei')          imei: string,
-    //     @UploadedFile()         file: Express.Multer.File,
-    // ) {
-    //     return this.icccService.uploadDeviceAudio(imei, file);
-    // }
-
-
-    // @Get('audio/default')
-    // getDefaultAudios() {
-    //     return this.icccService.getDefaultAudios();
-    // }
-
-    // @Get('audio/device/:imei')
-    // getDeviceAudios(@Param('imei') imei: string) {
-    //     return this.icccService.getDeviceAudios(imei);
-    // }
 }
