@@ -5,6 +5,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { MqttService } from 'src/configs/mqtt/mqtt.service';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
@@ -64,6 +65,7 @@ const validateDateRange = (from: string, to: string) => {
 export class IcccService {
   constructor(
     private prisma: PrismaService,
+    private mqttService: MqttService,
     // private sftpService: SftpService
   ) {}
 
@@ -375,6 +377,32 @@ export class IcccService {
 
     return { status: 'success', data };
   }
+ //POST-/iccc/cloudflare/restart
+  async restartDevice(imei: string) {
+  if (!imei) {
+    throw new BadRequestException('IMEI is required');
+  }
+
+  // Validate device belongs to Organization 6
+  const { imei: deviceImei } = await this.resolveDevice(imei);
+
+  const topic = `${deviceImei}/command`;
+
+  const payload = {
+    command: 'Cloudflare Tunnel Restart',
+    token: process.env.GCAM_SECRET_TOKEN || 'GCAM_SECRET_123',
+  };
+
+  this.mqttService.publish(topic, payload);
+
+  return {
+    status: 'success',
+    message: 'Cloudflare Tunnel restart command sent successfully',
+    imei: deviceImei,
+    topic,
+    payload,
+  };
+}
 
   // //  POST - /iccc/report/anpr_logs
   // async getAnprLogs(imei: string, from: string, to: string) {

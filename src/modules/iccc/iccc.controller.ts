@@ -73,6 +73,11 @@ export class IcccController {
       body.event,
     );
   }
+//cloudflare refresh
+  @Post('cloudflare/restart')
+restartDevice(@Body() body: { imei: string }) {
+  return this.icccService.restartDevice(body.imei);
+}
 
   // Alias for backward compatibility
   @Post('report/warning_logs')
