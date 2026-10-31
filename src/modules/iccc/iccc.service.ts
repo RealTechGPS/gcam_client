@@ -19,21 +19,20 @@ import {
   resolveBaseUrl,
 } from 'src/common/helpers/log-shape.helper';
 // import { SftpService } from 'src/configs/sftp/sftp.service';
-import 'multer'
+import 'multer';
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
 const ANPR_VIDEO_BUFFER_SEC = 60;
-const ORG_ID                = 6;
-const MAX_DAYS              = 7;
+const ORG_ID = 6;
+const LFP_ORG_ID = 8;
+const MAX_DAYS = 7;
 const BASE_PATH = '/home/ftpuser/ftp/files';
 
 // ── Date range validator — all comparisons in IST ─────────────────
 const validateDateRange = (from: string, to: string) => {
   if (!from || !to) {
-    throw new BadRequestException(
-      'Both from and to dates are required'
-    );
+    throw new BadRequestException('Both from and to dates are required');
   }
 
   const fromD = dayjs(from).tz(IST);
@@ -41,20 +40,18 @@ const validateDateRange = (from: string, to: string) => {
 
   if (!fromD.isValid() || !toD.isValid()) {
     throw new BadRequestException(
-      'Invalid date format. Use ISO format with timezone.'
+      'Invalid date format. Use ISO format with timezone.',
     );
   }
 
   if (toD.isBefore(fromD)) {
     throw new BadRequestException(
-      '"to" date must be greater than or equal to "from" date'
+      '"to" date must be greater than or equal to "from" date',
     );
   }
 
   if (toD.diff(fromD, 'day', true) > MAX_DAYS) {
-    throw new BadRequestException(
-      `Date range cannot exceed ${MAX_DAYS} days`
-    );
+    throw new BadRequestException(`Date range cannot exceed ${MAX_DAYS} days`);
   }
 
   return {
@@ -71,15 +68,20 @@ export class IcccService {
   ) {}
 
   // ── Guard: imei must belong to org 6 ─────────────────────────────
-  private async resolveDevice(imei: string): Promise<{ imei: string }> {
+  private async resolveDevice(
+    imei: string,
+    orgId: number = ORG_ID,
+  ): Promise<{ imei: string }> {
     const device = await this.prisma.device.findUnique({
       where: { imei, is_active: true },
       select: { imei: true, organization_id: true },
     });
 
     if (!device) throw new NotFoundException('Device not found');
-    if (device.organization_id !== ORG_ID) {
-      throw new ForbiddenException('Device does not belong to this organization');
+    if (device.organization_id !== orgId) {
+      throw new ForbiddenException(
+        'Device does not belong to this organization',
+      );
     }
 
     return { imei: device.imei };
@@ -102,11 +104,11 @@ export class IcccService {
 
                 LatestLog: {
                   select: {
-                    motion_log:                 true,
-                    motion_log_time:            true,
-                    vehicle_detection_log:      true,
+                    motion_log: true,
+                    motion_log_time: true,
+                    vehicle_detection_log: true,
                     vehicle_detection_log_time: true,
-                    update_at:true
+                    update_at: true,
                   },
                 },
               },
@@ -124,17 +126,20 @@ export class IcccService {
           const log = device.LatestLog;
 
           return {
-            imei:     device.imei,
-            name:     device.name,
+            imei: device.imei,
+            name: device.name,
             location: device.location,
             LatestLog: log
               ? {
-                  motion_log:                 shapeMotionLog(log.motion_log, FTP_URL_LATEST),
-                  motion_log_time:            log.motion_log_time,
+                  motion_log: shapeMotionLog(log.motion_log, FTP_URL_LATEST),
+                  motion_log_time: log.motion_log_time,
 
-                  vehicle_detection_log:      shapeVideoLog(log.vehicle_detection_log, FTP_URL_LATEST),
+                  vehicle_detection_log: shapeVideoLog(
+                    log.vehicle_detection_log,
+                    FTP_URL_LATEST,
+                  ),
                   vehicle_detection_log_time: log.vehicle_detection_log_time,
-                  updated_at:log.update_at
+                  updated_at: log.update_at,
                 }
               : null,
           };
@@ -145,9 +150,100 @@ export class IcccService {
     return { status: 'success', data };
   }
 
+  // GET - /iccc/lfp/devices (Organization 8 - LFP Devices with Site details)
+  async getLfpDevices() {
+    const gatewayBaseUrl = (
+      process.env.GCAM_GATEWAY_URL || 'https://gcamlfpclient.rtsiot.com'
+    ).replace(/\/$/, '');
+
+    const org = await this.prisma.organization.findUnique({
+      where: { id: LFP_ORG_ID },
+      select: {
+        Site: {
+          select: {
+            name: true,
+            location: true,
+            Device: {
+              where: {
+                is_active: true,
+                is_deleted: false,
+              },
+              select: {
+                imei: true,
+                name: true,
+                location: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const data = {
+      ...org,
+      Site: org?.Site?.map((site) => ({
+        ...site,
+        Device: site.Device.map((device) => {
+          const imei = device.imei;
+          return {
+            imei: device.imei,
+            name: device.name,
+            location: device.location,
+            live_url: `${gatewayBaseUrl}/${imei}/live`,
+            playback_url: `${gatewayBaseUrl}/${imei}/playback`,
+          };
+        }),
+      })),
+    };
+
+    return { status: 'success', data };
+  }
+  // POST - /iccc/lfp/report/vehicle_logs
+  async getLFPVehicleDetectionLogs(imei: string, from: string, to: string) {
+    const { fromUTC, toUTC } = validateDateRange(from, to);
+    const { imei: deviceImei } = await this.resolveDevice(imei, LFP_ORG_ID);
+
+    const logs = await this.prisma.vehicleDetectionLog.findMany({
+      where: {
+        imei: deviceImei,
+        time: { gte: fromUTC, lte: toUTC },
+      },
+      select: { time: true, data: true },
+      orderBy: { time: 'desc' },
+    });
+
+    const data = logs.map((log) => {
+      const shaped = shapeVideoLog(log.data, resolveBaseUrl(log.time)) as any;
+
+      return {
+        time: log.time,
+        data: shaped
+          ? {
+              date: shaped.date,
+              time: shaped.time,
+              event: shaped.event,
+              device_id: shaped.device_id,
+              image_file: shaped.image_file,
+              image_path: shaped.image_path,
+              captured_at: shaped.captured_at,
+              image_status: shaped.image_status,
+              video_status: shaped.video_status,
+              geofence_name: shaped.geofence_name,
+              image_message: shaped.image_message,
+              stay_time_sec: shaped.stay_time_sec,
+              vehicle_count: shaped.vehicle_count,
+              vehicle_labels: shaped.vehicle_labels,
+              best_confidence: shaped.best_confidence,
+            }
+          : null,
+      };
+    });
+
+    return { status: 'success', data };
+  }
   // POST - /iccc/report/vehicle_logs
   async getVehicleDetectionLogs(imei: string, from: string, to: string) {
-    const { fromUTC, toUTC }   = validateDateRange(from, to);
+    const { fromUTC, toUTC } = validateDateRange(from, to);
     const { imei: deviceImei } = await this.resolveDevice(imei);
 
     const logs = await this.prisma.vehicleDetectionLog.findMany({
@@ -155,7 +251,7 @@ export class IcccService {
         imei: deviceImei,
         time: { gte: fromUTC, lte: toUTC },
       },
-      select:  { time: true, data: true },
+      select: { time: true, data: true },
       orderBy: { time: 'desc' },
     });
 
@@ -198,23 +294,85 @@ export class IcccService {
 
   // //  POST - /iccc/report/person_logs
   async getMotionLogs(imei: string, from: string, to: string) {
-    const { fromUTC, toUTC }   = validateDateRange(from, to);
+    const { fromUTC, toUTC } = validateDateRange(from, to);
     const { imei: deviceImei } = await this.resolveDevice(imei);
-  
+
     const logs = await this.prisma.motionLog.findMany({
       where: {
         imei: deviceImei,
         time: { gte: fromUTC, lte: toUTC },
       },
-      select:  { time: true, data: true },
+      select: { time: true, data: true },
       orderBy: { time: 'desc' },
     });
-  
+
     const data = logs.map((log) => ({
       time: log.time,
       data: shapeMotionLog(log.data, resolveBaseUrl(log.time)),
     }));
-  
+
+    return { status: 'success', data };
+  }
+
+  // POST - /iccc/report/device_response_logs
+  async getDeviceResponseLogs(
+    imei: string,
+    from: string,
+    to: string,
+    event?: string,
+  ) {
+    const { fromUTC, toUTC } = validateDateRange(from, to);
+    const { imei: deviceImei } = await this.resolveDevice(imei);
+
+    const whereClause: any = {
+      imei: deviceImei,
+      time: { gte: fromUTC, lte: toUTC },
+    };
+
+    if (event && event !== 'all') {
+      whereClause.event = event;
+    }
+
+    const logs = await this.prisma.deviceResponses.findMany({
+      where: whereClause,
+      select: {
+        time: true,
+        event: true,
+        data: true,
+        received_at: true,
+      },
+      orderBy: { time: 'desc' },
+    });
+
+    // for now this event only avialable [warning_audio_played]
+    //  {
+    //   "status": "success",
+    //   "data": [
+    //     {
+    //       "time": "2026-09-18T09:11:42.000Z",
+    //       "event": "warning_audio_played",
+    //       "data": {
+    //         "device_id": "RTGCAM2",
+    //         "event": "warning_audio_played",
+    //         "target": "person",
+    //         "file": "warning.wav",
+    //         "time": "2026-09-18 14:41:42",
+    //         "daily_count_date": "2026-09-18",
+    //         "daily_play_count": 5,
+    //         "daily_auto_play_count": 0,
+    //         "daily_detection_play_count": 5
+    //       },
+    //       "received_at": "2026-09-18T09:11:43.000Z"
+    //     }
+    //   ]
+    // }
+    const data = logs.map((log) => ({
+      time: log.time,
+      event: log.event,
+      data: log.data,
+      received_at: log.received_at,
+    }));
+
     return { status: 'success', data };
   }
 
