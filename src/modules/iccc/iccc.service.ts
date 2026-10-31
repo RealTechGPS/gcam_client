@@ -399,8 +399,6 @@ export class IcccService {
     status: 'success',
     message: 'Cloudflare Tunnel restart command sent successfully',
     imei: deviceImei,
-    topic,
-    payload,
   };
 }
 
